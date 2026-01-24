@@ -38,6 +38,19 @@ http://localhost:8000/docs
 ```
 > **Note:** WebSocket routes are not shown in Swagger, but the UI confirms the OpenAPI spec is active.
 
+## Running with Docker (Recommended)
+The fastest way to get the entire stack (FastAPI, LiveKit Server, Agent, and Milvus) running is via Docker Compose:
+
+```bash
+docker-compose up --build
+```
+
+This will start:
+- **NEX API**: `http://localhost:8000`
+- **LiveKit Server**: `http://localhost:7880`
+- **NEX Agent**: Automatically connects to the local LiveKit server.
+- **Milvus**: Vector DB for memory.
+
 ## Generating a JWT for Testing
 ```python
 # quick one‑liner (run with `poetry run python -c "..."`)

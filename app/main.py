@@ -3,6 +3,8 @@ from fastapi import FastAPI, WebSocket
 from dotenv import load_dotenv
 load_dotenv()
 from .api_gateway import websocket_endpoint
+from .livekit_token import generate_livekit_token
+from pydantic import BaseModel
 
 app = FastAPI(
     title="NEX Backend Service",
@@ -14,6 +16,36 @@ app = FastAPI(
 async def ws_endpoint(websocket: WebSocket):
     # The websocket_endpoint will handle authentication via an initial "auth" message.
     await websocket_endpoint(websocket)
+
+class TokenRequest(BaseModel):
+    room_name: str
+    identity: str
+
+@app.post("/livekit/token")
+async def get_livekit_token(request: TokenRequest):
+    """
+    Generate a LiveKit token for the given room and identity.
+    """
+    token = generate_livekit_token(request.room_name, request.identity)
+    return {"token": token}
+
+class ChatRequest(BaseModel):
+    message: str
+    conversation_id: str
+
+@app.post("/chat/text")
+async def chat_text(request: ChatRequest):
+    """
+    Text-based chat endpoint that reuses the cognitive pipeline.
+    """
+    from .orchestrator import ConversationOrchestrator
+    orchestrator = ConversationOrchestrator()
+    response_tokens = []
+    async for token in orchestrator.process_turn("default_user", request.message):
+        if token != "<END>":
+            response_tokens.append(token)
+    
+    return {"response": "".join(response_tokens)}
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
