@@ -1,5 +1,6 @@
 import uvicorn
 from fastapi import FastAPI, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 load_dotenv()
 from .api_gateway import websocket_endpoint
@@ -10,6 +11,14 @@ app = FastAPI(
     title="NEX Backend Service",
     description="Minimal viable product for the NEX Backend Service with WebSocket streaming, JWT authentication, and load‑testing harness.",
     version="0.1.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.websocket("/ws")

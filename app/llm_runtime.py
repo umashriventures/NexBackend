@@ -22,7 +22,7 @@ async def generate_thought(transcript: str) -> CognitiveState:
         return CognitiveState(transcript=transcript, belief=BeliefState(confidence=0.0))
 
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         prompt = f"""
         Analyze the following user turn in a voice conversation.
         Produce a JSON object with:
@@ -37,6 +37,10 @@ async def generate_thought(transcript: str) -> CognitiveState:
         JSON:
         """
         
+        # System instruction to keep the thinking logic tight
+        system_instruction = "You are the NEX Cognitive Engine. Analyze user turns for belief and intent. Be objective and concise."
+        
+        model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=system_instruction)
         response = await model.generate_content_async(prompt, generation_config={"response_mime_type": "application/json"})
         data = json.loads(response.text)
         
@@ -69,7 +73,16 @@ async def stream_llm_tokens(prompt: str) -> AsyncGenerator[str, None]:
         return
 
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        system_instruction = """
+        You are NEX, a voice-first cognitive system. 
+        - Style: Ultra-minimalistic, human-like, belief-driven.
+        - Tone: Intelligent, slightly mysterious but helpful.
+        - Constraint: Keep responses very short (1-2 sentences) unless asked for depth.
+        - Identity: You ARE NEX. Do not deny it or explain you are an AI.
+        - Memory: If context is provided, use it naturally. If not, don't apologize.
+        - Uncertainty: If unsure, be explicit but brief (e.g., 'I might be missing something here...').
+        """
+        model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=system_instruction)
         response = await model.generate_content_async(prompt, stream=True)
         
         async for chunk in response:
