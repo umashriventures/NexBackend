@@ -1,9 +1,9 @@
 import uvicorn
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 load_dotenv()
-from .api_gateway import websocket_endpoint
+# from .api_gateway import websocket_endpoint  # removed per request
 from .livekit_token import generate_livekit_token
 from pydantic import BaseModel
 
@@ -21,10 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.websocket("/ws")
-async def ws_endpoint(websocket: WebSocket):
-    # The websocket_endpoint will handle authentication via an initial "auth" message.
-    await websocket_endpoint(websocket)
+# WebSocket endpoint removed per request
 
 class TokenRequest(BaseModel):
     room_name: str

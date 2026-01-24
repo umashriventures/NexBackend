@@ -1,0 +1,4 @@
+# NEX Backend API
+api.nex.umashriventures.co {
+    reverse_proxy nex-api:8000
+}
