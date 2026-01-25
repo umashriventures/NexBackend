@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   nex-api:
     build: .
@@ -67,6 +65,26 @@ services:
     networks:
       - nex-network
 
+  caddy:
+    image: caddy:alpine
+    container_name: nex-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - nex-api
+    networks:
+      - nex-network
+
 networks:
   nex-network:
     driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

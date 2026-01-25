@@ -2,3 +2,7 @@
 api.nex.umashriventures.co {
     reverse_proxy nex-api:8000
 }
+
+neo4j.nex.umashriventures.co {
+    reverse_proxy nex-neo4j:7474
+}
