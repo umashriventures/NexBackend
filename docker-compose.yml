@@ -9,12 +9,8 @@ services:
       - "8000:8000"
     env_file:
       - .env
-    environment:
-      - LIVEKIT_URL=http://livekit-server:7880
-      - LIVEKIT_API_KEY=devkey
-      - LIVEKIT_API_SECRET=secretkey
     depends_on:
-      - neo4j # Updated dependency from livekit-server to neo4j
+      - neo4j
     networks:
       - nex-network
 

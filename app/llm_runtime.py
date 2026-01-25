@@ -1,57 +1,37 @@
 import os
 import json
-import yaml
 import logging
 import asyncio
-from typing import AsyncGenerator, Optional
-from llama_cpp import Llama
+from typing import AsyncGenerator
+import google.generativeai as genai
 from .cognition import RoutingDecision
 from . import prompts
 
 logger = logging.getLogger(__name__)
 
-# Load models config
-MODELS_CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models.yml")
-with open(MODELS_CONFIG_PATH, "r") as f:
-    models_config = yaml.safe_load(f)
+# Configure Gemini
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+if not GOOGLE_API_KEY:
+    logger.warning("GOOGLE_API_KEY not found in environment variables. LLM calls will fail.")
+else:
+    genai.configure(api_key=GOOGLE_API_KEY)
 
-LLM_REPO = models_config["default_llm"]["repo"]
-LLM_FILENAME = models_config["default_llm"]["filename"]
-CACHE_DIR = os.getenv("HF_HOME", os.path.expanduser("~/.cache/huggingface"))
-
-# Global model instance
-_llm_instance = None
-
-def get_llm_instance():
-    global _llm_instance
-    if _llm_instance is None:
-        logger.info(f"Loading local GGUF LLM: {LLM_REPO}/{LLM_FILENAME}...")
-        _llm_instance = Llama.from_pretrained(
-            repo_id=LLM_REPO,
-            filename=LLM_FILENAME,
-            n_ctx=4096,
-            n_threads=os.cpu_count(),
-            # Caching is handled by HF/llama-cpp internally using cache_dir
-        )
-    return _llm_instance
+MODEL_NAME = "gemini-2.0-flash"
 
 async def get_routing_decision(transcript: str) -> RoutingDecision:
     """
-    Determine if the query needs past memory via local Llama.
+    Determine if the query needs past memory via Gemini.
     """
     try:
-        llm = get_llm_instance()
+        model = genai.GenerativeModel(
+            MODEL_NAME,
+            generation_config={"response_mime_type": "application/json"}
+        )
         prompt = prompts.ROUTING_PROMPT.format(transcript=transcript)
         
-        response = llm.create_chat_completion(
-            messages=[{"role": "user", "content": prompt}],
-            response_format={
-                "type": "json_object",
-                "schema": RoutingDecision.model_json_schema()
-            },
-            temperature=0.1
-        )
-        data = json.loads(response["choices"][0]["message"]["content"])
+        response = await model.generate_content_async(prompt)
+        text = response.text
+        data = json.loads(text)
         return RoutingDecision(**data)
     except Exception as e:
         logger.error(f"Error in get_routing_decision: {e}")
@@ -59,31 +39,27 @@ async def get_routing_decision(transcript: str) -> RoutingDecision:
 
 async def stream_llm_tokens(prompt: str, context: str = "") -> AsyncGenerator[str, None]:
     """
-    Stream tokens from local Llama instance.
+    Stream tokens from Gemini.
     """
     try:
-        llm = get_llm_instance()
         context_str = context if context else "No past memory provided."
         system_instruction = prompts.NEX_SYSTEM_INSTRUCTION.format(context_str=context_str)
         
-        stream = llm.create_chat_completion(
-            messages=[
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": prompt}
-            ],
-            stream=True
+        model = genai.GenerativeModel(
+            MODEL_NAME,
+            system_instruction=system_instruction
         )
         
-        for chunk in stream:
-            token = chunk["choices"][0]["delta"].get("content", "")
-            if token:
-                yield token
-                await asyncio.sleep(0) # Yield control
+        response = await model.generate_content_async(prompt, stream=True)
+        
+        async for chunk in response:
+            if chunk.text:
+                yield chunk.text
                 
         yield "<END>"
     except Exception as e:
         logger.error(f"Error in stream_llm_tokens: {e}")
-        yield f"Error calling local GGUF LLM: {str(e)}"
+        yield f"Error calling Gemini: {str(e)}"
         yield "<END>"
 
 async def get_memory_one_liner(transcript: str, response: str) -> str:
@@ -91,14 +67,11 @@ async def get_memory_one_liner(transcript: str, response: str) -> str:
     Generate a one-liner summary of the interaction.
     """
     try:
-        llm = get_llm_instance()
+        model = genai.GenerativeModel(MODEL_NAME)
         prompt = prompts.MEMORY_ONE_LINER_PROMPT.format(transcript=transcript, response=response)
         
-        res = llm.create_chat_completion(
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=100
-        )
-        return res["choices"][0]["message"]["content"].strip()
+        res = await model.generate_content_async(prompt)
+        return res.text.strip()
     except Exception as e:
         logger.error(f"Error generating memory one-liner: {e}")
         return f"User said: {transcript[:50]}"
