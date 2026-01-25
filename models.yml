@@ -1,0 +1,10 @@
+default_llm:
+  name: "phi-3-mini-gguf"
+  repo: "microsoft/Phi-3-mini-4k-instruct-gguf"
+  filename: "Phi-3-mini-4k-instruct-q4_k_s.gguf"
+  type: "text-generation"
+
+default_embedder:
+  name: "all-MiniLM-L6-v2"
+  repo: "sentence-transformers/all-MiniLM-L6-v2"
+  type: "feature-extraction"

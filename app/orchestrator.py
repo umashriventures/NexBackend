@@ -9,12 +9,26 @@ logger = logging.getLogger(__name__)
 
 from .services import services
 
+from fastapi import BackgroundTasks
+
 class ConversationOrchestrator:
     def __init__(self):
         self.memory_engine = services.memory_engine
 
+    async def _store_memory_background(self, user_id: str, content: str, transcript: str):
+        """Internal helper for background memory storage."""
+        await self.memory_engine.store_memory_node(
+            user_id=user_id,
+            content=content,
+            metadata={"transcript": transcript}
+        )
 
-    async def process_turn(self, user_id: str, transcript: str) -> AsyncGenerator[str, None]:
+    async def process_turn(
+        self, 
+        user_id: str, 
+        transcript: str, 
+        background_tasks: Optional[BackgroundTasks] = None
+    ) -> AsyncGenerator[str, None]:
         """
         Processes a conversation turn with optimized routing:
         1. Decision: Needs past memory?
@@ -31,7 +45,7 @@ class ConversationOrchestrator:
         context = ""
         full_response = []
 
-        # 2. Selective Memory Retrieval
+        # 2. Selective Memory Retrieval (Sequential)
         if decision.needs_past_memory:
             nodes = await self.memory_engine.retrieve_relevant_nodes(user_id, transcript)
             if nodes:
@@ -52,23 +66,26 @@ class ConversationOrchestrator:
                     full_response.append(token)
                 yield token
 
-        # 4. Asynchronous Memory Consolidation
         if full_response:
             response_text = "".join(full_response)
             
             # Use the one-liner from decision or generate a new one
             one_liner = decision.memory_one_liner
             if not one_liner or decision.needs_past_memory:
-                # If we retrieved memory, the routing one-liner might be stale/incomplete
                 one_liner = await get_memory_one_liner(transcript, response_text)
 
-            asyncio.create_task(
-                self.memory_engine.store_memory_node(
-                    user_id=user_id,
-                    content=one_liner,
-                    metadata={"transcript": transcript}
+            if background_tasks:
+                background_tasks.add_task(
+                    self._store_memory_background,
+                    user_id,
+                    one_liner,
+                    transcript
                 )
-            )
+            else:
+                # Fallback to local async task if for some reason background_tasks is not provided
+                asyncio.create_task(
+                    self._store_memory_background(user_id, one_liner, transcript)
+                )
 
 async def process_final_transcript(user_id: str, transcript: str) -> AsyncGenerator[LLMTokenEvent, None]:
     """ Bridge for the existing WebSocket/Text API. """
