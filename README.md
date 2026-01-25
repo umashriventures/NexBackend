@@ -1,21 +1,20 @@
-# NEX Backend — Voice-First Cognitive System (v1.3)
+# NEX-Agentic-Core (v2.0)
 
-NEX is a **voice-first, belief-driven cognitive system** designed for low-latency, stateful conversations. It utilizes **LiveKit** for real-time audio transport and **Gemini 1.5/2.5** for high-reasoning cognitive orchestration.
+NEX is a **stateful, agentic cognitive backend** designed for persistent, high‑intelligence conversations. It integrates **Graphiti** and **Neo4j** to build a dynamic knowledge graph of user interactions, enabling "forever memory."
 
 ---
 
-## 🚀 System Architecture
+## 🚀 Agentic Architecture
 
-NEX distinguishes between two intelligence paths to optimize for both speed and depth:
+NEX combines two memory paths to optimize for scale and intelligence:
 
-1.  **Fast Path (Real-time Conversation)**:
-    *   Direct audio streaming via LiveKit.
-    *   Immediate response generation for simple turns.
-    *   No mandatory RAG overhead.
-2.  **Deep Path (Conditional Cognition)**:
-    *   Triggered when historical context or personalization is required.
-    *   Performs **Selective Memory Retrieval (RAG)** using Milvus.
-    *   Analyzes **Belief State** to resolve ambiguities before acting.
+1.  **Dynamic Memory (Episodic Graph)**:
+    *   Powered by **Graphiti** + **Neo4j**.
+    *   Automatically extracts facts, identities, and relationships.
+    *   Handles temporal updates (e.g., "I moved to London").
+2.  **Static Memory (Vector RAG)**:
+    *   Powered by **Milvus**.
+    *   High‑speed retrieval of fixed documents and global knowledge.
 
 ---
 
@@ -23,12 +22,11 @@ NEX distinguishes between two intelligence paths to optimize for both speed and 
 
 | Layer | Technology |
 | :--- | :--- |
-| **Real-time Audio** | LiveKit (WebRTC) |
 | **Cognitive Brain** | Gemini 1.5 Flash / 2.5 Flash |
+| **Knowledge Graph** | Neo4j (via Graphiti) |
 | **Vector Memory** | Milvus (Standalone) |
-| **Backend Framework** | FastAPI |
-| **Dependency Management** | Poetry |
-| **Containerization** | Docker + Docker Compose |
+| **Backend Framework** | FastAPI (HTTP Only) |
+| **Infrastructure** | Docker + Docker Compose |
 
 ---
 
@@ -37,13 +35,11 @@ NEX distinguishes between two intelligence paths to optimize for both speed and 
 ```text
 app/
 ├── main.py             # FastAPI entrypoint & REST endpoints
-├── agent.py            # LiveKit Voice Agent implementation
-├── nex_agent_llm.py    # Custom LLM wrapper for Nex-specific logic
-├── orchestrator.py     # Cognitive Orchestration Engine (The "Thinker")
+├── orchestrator.py     # Agentic Orchestration Engine (The "Thinker")
+├── memory_engine.py    # Hybrid Retrieval logic (Graph + Vector)
+├── memory_graph.py     # Graphiti & Neo4j integration
 ├── llm_runtime.py      # Gemini integration (Thought & Token generation)
-├── memory_engine.py    # Selective RAG logic & Milvus interface
 ├── cognition.py        # Pydantic models for Belief & Intent
-├── livekit_token.py    # JWT generation for LiveKit rooms
 └── ... (Utilities)
 ```
 
@@ -52,25 +48,23 @@ app/
 ## ⚡ Getting Started
 
 ### 1. Environment Setup
-Create a `.env` file in the root directory:
+Create a `.env` file:
 
 ```env
 GOOGLE_API_KEY="your-gemini-api-key"
-LIVEKIT_URL="http://localhost:7880"
-LIVEKIT_API_KEY="devkey"
-LIVEKIT_API_SECRET="secretkey"
+NEO4J_URI="bolt://localhost:7687"
+NEO4J_USER="neo4j"
+NEO4J_PASSWORD="password"
 ```
 
-### 2. Run with Docker (Infrastructure Only)
-To start the necessary infrastructure (LiveKit Server, Milvus, Redis):
+### 2. Start Infrastructure
+Launch Neo4j, Milvus, and Redis:
 
 ```bash
 docker compose up -d
 ```
 
-### 3. Run the Backend Locally
-Install dependencies and start the FastAPI server:
-
+### 3. Run the Agentic Core
 ```bash
 poetry install
 poetry run uvicorn app.main:app --reload
@@ -78,66 +72,26 @@ poetry run uvicorn app.main:app --reload
 
 ---
 
-## 🧠 Core Concepts
+## 📡 API Specifications
 
-### Belief State Model
-Every turn is analyzed to produce a **Belief Object**:
-- **Confidence**: 0.0–1.0.
-- **Ambiguities**: List of unresolved points.
-- **Assumptions**: What the system is "guessing" to keep the flow.
-- **Requires Context**: Boolean trigger for memory retrieval.
-
-### Selective Memory Retrieval (RAG)
-Unlike traditional RAG systems, NEX **does not** query the database on every turn. The **Memory Retrieval Gate** analyzes the intent:
-- **Fast Path**: Simple greetings or acknowledgments skip the DB.
-- **Deep Path**: References to the past or complex planning trigger a Milvus query.
+- **`POST /chat/text`**: Primary entry point. Ingests transcript, retrieves hybrid memory, generates response, and async-consololidates the turn into the graph.
+- **`POST /memory/search`**: Debug endpoint to view the knowledge graph and search context for a user.
+- **`GET /health`**: Verifies connectivity to Neo4j, Milvus, and Redis.
 
 ---
 
-## 🧪 Testing
+## 🧠 Cognitive Concepts
 
-We provide a specialized test script to verify the core endpoints (Token & Chat):
+### Selective Memory Retrieval
+NEX analyzes the **Intent** and **Belief State** of every message.
+- **Fast Path**: Simple chat skips DB retrieval.
+- **Deep Path**: Temporal or identity-based queries trigger a hybrid Graph + Vector search.
 
-```bash
-poetry run python test_nex_endpoints.py
-```
-
-**What it tests:**
-- ✅ **LiveKit Auth**: Generates a valid JWT for room joining.
-- ✅ **Cognitive Chat**: Sends a message and measures the **latency** and **conciseness** of the belief-driven response.
+### Async Consolidation
+Every conversation turn is transformed into a Graphiti **Episode** and ingested into Neo4j as a background task, ensuring 0ms latency impact on the user response.
 
 ---
 
-## 📡 API Endpoints
-
-- `POST /livekit/token`: Generate a token to join a voice room.
-- `POST /chat/text`: Secondary text-based entry point to the cognitive engine.
-- `WebSocket /ws`: Legacy/Secondary WebSocket interface.
-
----
-
-## 🌐 Production Deployment
-
-For deployment at `umashriventures.com`, we recommend the following subdomain structure:
-
-| Component | Subdomain | Purpose |
-| :--- | :--- | :--- |
-| **Frontend** | `nex.umashriventures.com` | User Interface |
-| **Backend API** | `api.nex.umashriventures.com` | FastAPI endpoints, Token generation, Text chat |
-| **LiveKit Server** | `livekit.nex.umashriventures.com` | WebRTC signaling and data transport |
-
-### Deployment Requirements
-1.  **SSL/TLS**: All subdomains MUST have valid SSL certificates. LiveKit requires HTTPS/WSS for browser-side WebRTC.
-2.  **Reverse Proxy**: Use Nginx or Traefik to route traffic:
-    *   `api.nex.umashriventures.com` -> `nex-api:8000`
-    *   `livekit.nex.umashriventures.com` -> `livekit-server:7880`
-3.  **Ports**: Ensure the following ports are open on your firewall for LiveKit:
-    *   `TCP: 7880, 7881` (Signaling)
-    *   `UDP: 50000-60000` (WebRTC Media)
-
----
-
-## 🛡 Security & Deployment
-- **Platform**: Designed for AWS ECS.
-- **Security**: AES-256 for stored transcripts, user-isolated memory nodes.
-- **Performance**: Targets <1.5s total voice turn latency.
+## 🛡 Security & Scalability
+- **Scalability**: Designed for 10k RPS via distributed Milvus and Neo4j clustering.
+- **Security**: AES-256 for stored graph data; user-isolated nodes.

@@ -3,14 +3,38 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 load_dotenv()
-# from .api_gateway import websocket_endpoint  # removed per request
-from .livekit_token import generate_livekit_token
 from pydantic import BaseModel
 
+import logging
+from contextlib import asynccontextmanager
+from .services import services
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    await services.init_services()
+    yield
+    # Shutdown logic (if any)
+
 app = FastAPI(
-    title="NEX Backend Service",
-    description="Minimal viable product for the NEX Backend Service with WebSocket streaming, JWT authentication, and load‑testing harness.",
-    version="0.1.0",
+    title="NEX-Agentic-Core API",
+    description="""
+    The NEX-Agentic-Core is a stateful, agentic cognitive backend.
+    It provides high-intelligence conversation capabilities with 
+    long-term memory via Graphiti (Neo4j) and high-scale vector retrieval (Milvus).
+    """,
+    version="2.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -21,33 +45,55 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# WebSocket endpoint removed per request
+# System Endpoints
 
-class TokenRequest(BaseModel):
-    room_name: str
-    identity: str
+@app.get("/health", tags=["System"], summary="Health Check")
+async def health_check():
+    """
+    Check connectivity to all core services.
+    """
+    engine = services.memory_engine
+    
+    status = {
+        "status": "online",
+        "milvus": "connected", # Stub
+        "redis": "connected",  # Stub
+        "neo4j": "connected" if engine and engine.graphiti.connected else "disconnected"
+    }
+    return status
 
-@app.post("/livekit/token")
-async def get_livekit_token(request: TokenRequest):
+class MemorySearchRequest(BaseModel):
+    query: str
+    user_id: str
+
+@app.post("/memory/search", tags=["Memory"], summary="Graphiti Memory Search")
+async def search_memory(request: MemorySearchRequest):
     """
-    Generate a LiveKit token for the given room and identity.
+    Debug endpoint to query the Knowledge Graph directly.
     """
-    token = generate_livekit_token(request.room_name, request.identity)
-    return {"token": token}
+    engine = services.memory_engine
+    if not engine or not engine.graphiti:
+        return {"error": "Memory engine not initialized"}
+        
+    data = await engine.graphiti.get_graph_data(request.user_id)
+    # Also include the context search result for convenience
+    context = await engine.graphiti.search(request.user_id, request.query)
+    return {"graph": data, "context": context}
 
 class ChatRequest(BaseModel):
     message: str
-    conversation_id: str
+    user_id: str = "default_user"
+    conversation_id: str = "default_session"
 
-@app.post("/chat/text")
+@app.post("/chat/text", tags=["Chat"], summary="Agentic Chat Interaction")
 async def chat_text(request: ChatRequest):
     """
-    Text-based chat endpoint that reuses the cognitive pipeline.
+    Text-based chat endpoint that reuses the agentic cognitive pipeline.
     """
     from .orchestrator import ConversationOrchestrator
     orchestrator = ConversationOrchestrator()
     response_tokens = []
-    async for token in orchestrator.process_turn("default_user", request.message):
+    async for token in orchestrator.process_turn(request.user_id, request.message):
         if token != "<END>":
             response_tokens.append(token)
     

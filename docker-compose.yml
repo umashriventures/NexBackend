@@ -1,53 +1,36 @@
 version: '3.9'
 
 services:
-  nex-api:
-    build: .
-    image: nex-backend:latest
-    container_name: nex-api
+  # nex-api:
+  #   build: .
+  #   image: nex-backend:latest
+  #   container_name: nex-api
+  #   ports:
+  #     - "8000:8000"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - LIVEKIT_URL=http://livekit-server:7880
+  #     - LIVEKIT_API_KEY=devkey
+  #     - LIVEKIT_API_SECRET=secretkey
+  #   depends_on:
+  #     - neo4j # Updated dependency from livekit-server to neo4j
+  #   networks:
+  #     - nex-network
+
+  neo4j:
+    image: neo4j:5.26
+    container_name: nex-neo4j
     ports:
-      - "8000:8000"
-    env_file:
-      - .env
+      - "7474:7474"
+      - "7687:7687"
     environment:
-      - LIVEKIT_URL=http://livekit-server:7880
-      - LIVEKIT_API_KEY=devkey
-      - LIVEKIT_API_SECRET=secretkey
-    depends_on:
-      - livekit-server
+      - NEO4J_AUTH=neo4j/password
     networks:
       - nex-network
 
-  nex-agent:
-    build: .
-    image: nex-backend:latest
-    container_name: nex-agent
-    command: python -m app.agent dev
-    env_file:
-      - .env
-    environment:
-      - LIVEKIT_URL=http://livekit-server:7880
-      - LIVEKIT_API_KEY=devkey
-      - LIVEKIT_API_SECRET=secretkey
-    depends_on:
-      - livekit-server
-    networks:
-      - nex-network
-
-  livekit-server:
-    image: livekit/livekit-server:latest
-    container_name: livekit-server
-    command: --config /etc/livekit.yaml
-    volumes:
-      - ./livekit.yaml:/etc/livekit.yaml
-    ports:
-      - "7880:7880"
-      - "7881:7881"
-      - "50000-50050:50000-50050/udp"
-    networks:
-      - nex-network
-
-  redis:
+  nex-redis:
+    # Renamed to nex-redis in the instruction's snippet, but keeping original name as it's not explicitly stated to rename.
     image: redis:7-alpine
     container_name: nex-redis
     ports:

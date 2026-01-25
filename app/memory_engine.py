@@ -1,7 +1,7 @@
 import logging
 from pydantic import BaseModel
-from typing import List, Optional
-from .cognition import CognitiveState
+from typing import List
+from .memory_graph import GraphitiMemory
 
 logger = logging.getLogger(__name__)
 
@@ -14,37 +14,44 @@ class MemoryEngine:
     def __init__(self):
         # Initialize Milvus connection here if needed
         self.connected = False
+        self.graphiti = GraphitiMemory()
 
-    async def decide_retrieval(self, state: CognitiveState) -> bool:
+    async def connect(self):
         """
-        Memory Retrieval Gate: Decides whether to query the vector DB.
-        Rule: Memory retrieval MUST be selective, not mandatory.
+        Initialize connections for all memory systems.
         """
-        # Logic to decide based on intent and belief
-        if not state.intent:
-            return False
-            
-        # Triggers:
-        # - User references past interactions
-        # - Personalization is required
-        # - Long-term planning or strategy
-        # - Belief ambiguity needs historical grounding
-        if state.intent.requires_memory:
-            return True
-            
-        if state.belief.requires_context or state.belief.confidence < 0.7:
-            return True
-            
-        return False
+        logger.info("Initializing MemoryEngine connections...")
+        try:
+            await self.graphiti.connect()
+            self.connected = True
+            logger.info("MemoryEngine connections initialized successfully.")
+        except Exception as e:
+            self.connected = False
+            logger.error(f"MemoryEngine failed to initialize: {e}")
+            raise e
 
-    async def retrieve_relevant_nodes(self, query: str) -> List[MemoryNode]:
-        """ Query Vector DB for relevant memory nodes. """
-        # Stub for Milvus query
-        logger.info(f"Retrieving memory for query: {query}")
-        return []
+    async def retrieve_relevant_nodes(self, user_id: str, query: str) -> List[MemoryNode]:
+        """ Hybrid Query: Vector DB (Milvus) + Knowledge Graph (Graphiti). """
+        logger.info(f"Retrieving hybrid memory for user {user_id}: {query}")
+        
+        # 1. Search Knowledge Graph (Graphiti/Neo4j)
+        graph_context = await self.graphiti.search(user_id, query)
+        
+        # 2. Search Vector DB (Milvus) - Stubbed for now
+        vector_nodes = [] 
+        
+        # Merge results into a list of MemoryNodes
+        nodes = []
+        if graph_context:
+            nodes.append(MemoryNode(id="graph_0", content=graph_context, metadata={"source": "graph"}))
+        
+        nodes.extend(vector_nodes)
+        return nodes
 
-    async def store_memory_node(self, content: str, metadata: dict):
-        """ Store a new memory node asynchronously. """
-        # Stub for Milvus insertion
-        logger.info(f"Storing memory node: {content[:50]}...")
-        pass
+    async def store_memory_node(self, user_id: str, content: str, metadata: dict):
+        """ Store a new memory unit in both systems. """
+        # 1. Ingest into Graphiti (Async is handled by orchestrator calling this)
+        await self.graphiti.add_episode(user_id, content)
+        
+        # 2. Store in Milvus (Stubbed)
+        logger.info(f"Storing vector memory node: {content[:50]}...")

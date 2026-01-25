@@ -1,49 +1,74 @@
 import asyncio
 import logging
-from typing import AsyncGenerator, List, Optional
+from typing import AsyncGenerator, Optional
 from .llm_runtime import stream_llm_tokens
 from .event_streamer import LLMTokenEvent
-from .cognition import CognitiveState, BeliefState, Intent
 from .memory_engine import MemoryEngine, MemoryNode
 
 logger = logging.getLogger(__name__)
 
+from .services import services
+
 class ConversationOrchestrator:
     def __init__(self):
-        self.memory_engine = MemoryEngine()
+        self.memory_engine = services.memory_engine
 
-    async def _analyze_cognition(self, transcript: str) -> CognitiveState:
-        """
-        Analyze the transcript to produce intent and belief state.
-        Now uses the real Gemini call.
-        """
-        from .llm_runtime import generate_thought
-        return await generate_thought(transcript)
 
     async def process_turn(self, user_id: str, transcript: str) -> AsyncGenerator[str, None]:
         """
-        Processes a stabilized turn:
-        1. Cognition (Intent + Belief)
-        2. Memory Gate
-        3. LLM Generation
+        Processes a conversation turn with optimized routing:
+        1. Decision: Needs past memory?
+        2. Context: Selective retrieval.
+        3. Response: Generation & Streaming.
+        4. Memory: Consolidation with one-liner.
         """
-        # 1. Cognitive Orchestration
-        state = await self._analyze_cognition(transcript)
+        from .llm_runtime import get_routing_decision, stream_llm_tokens, get_memory_one_liner
         
-        # 2. Selective Memory Retrieval
+        # 1. Routing Decision
+        decision = await get_routing_decision(transcript)
+        logger.info(f"Routing Decision: needs_past_memory={decision.needs_past_memory}, reasoning={decision.reasoning}")
+
         context = ""
-        if await self.memory_engine.decide_retrieval(state):
-            nodes = await self.memory_engine.retrieve_relevant_nodes(transcript)
+        full_response = []
+
+        # 2. Selective Memory Retrieval
+        if decision.needs_past_memory:
+            nodes = await self.memory_engine.retrieve_relevant_nodes(user_id, transcript)
             if nodes:
                 context = "\n".join([n.content for n in nodes])
-                logger.info(f"Retrieved {len(nodes)} memory nodes.")
+                logger.info(f"Retrieved {len(nodes)} context nodes.")
 
-        # 3. LLM Execution Planning & Generation
-        # For simplicity, we prepend context to the prompt
-        prompt = f"Context: {context}\n\nUser: {transcript}" if context else transcript
-        
-        async for token in stream_llm_tokens(prompt):
-            yield token
+        # 3. Response Generation
+        if not decision.needs_past_memory and decision.standalone_answer:
+            # Optimal path: Use the pre-generated standalone answer
+            for token in decision.standalone_answer.split():
+                yield token + " "
+                full_response.append(token + " ")
+            yield "<END>"
+        else:
+            # Standard path: Stream tokens from LLM (potentially with context)
+            async for token in stream_llm_tokens(transcript, context=context):
+                if token != "<END>":
+                    full_response.append(token)
+                yield token
+
+        # 4. Asynchronous Memory Consolidation
+        if full_response:
+            response_text = "".join(full_response)
+            
+            # Use the one-liner from decision or generate a new one
+            one_liner = decision.memory_one_liner
+            if not one_liner or decision.needs_past_memory:
+                # If we retrieved memory, the routing one-liner might be stale/incomplete
+                one_liner = await get_memory_one_liner(transcript, response_text)
+
+            asyncio.create_task(
+                self.memory_engine.store_memory_node(
+                    user_id=user_id,
+                    content=one_liner,
+                    metadata={"transcript": transcript}
+                )
+            )
 
 async def process_final_transcript(user_id: str, transcript: str) -> AsyncGenerator[LLMTokenEvent, None]:
     """ Bridge for the existing WebSocket/Text API. """
