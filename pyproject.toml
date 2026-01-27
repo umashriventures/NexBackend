@@ -12,7 +12,6 @@ uvicorn = "^0.40.0"
 websockets = ">=13.0.0,<15.1.0"
 pydantic = "^2.12.5"
 python-dotenv = "^1.2.1"
-pyjwt = "^2.10.1"
 loguru = "^0.7.3"
 uvloop = "^0.22.1"
 locust = "^2.43.1"
@@ -21,7 +20,7 @@ pymilvus = "^2.5.0"
 httpx = ">=0.28.1,<1.0.0"
 neo4j = "^6.1.0"
 graphiti-core = {extras = ["google-genai"], version = "^0.26.3"}
-
+firebase-admin = "^7.1.0"
 
 [build-system]
 requires = ["poetry-core"]

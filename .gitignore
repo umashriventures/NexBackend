@@ -214,3 +214,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# Firebase Credentials
+firebase_credentials.json
+
+node_modules/
