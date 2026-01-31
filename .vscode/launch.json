@@ -1,0 +1,75 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "python": "/Users/ryanwalker277/github/nex-backend/.venv/bin/python",
+        },
+        {
+            "name": "Python Debugger: Flask",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "run.py",
+            "args": [
+                "app"
+            ],
+            "env": {
+                "FLASK_APP": "run",
+                "FLASK_DEBUG": "1"
+            },
+            "justMyCode": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: Celery Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "celery",
+            "args": [
+                "-A",
+                "app.celery_app.app",
+                "worker",
+                "--loglevel=info",
+                "-P",
+                "solo"
+            ],
+            "console": "integratedTerminal",
+            "python": "/Users/ryanwalker277/github/nex-backend/.venv/bin/python",
+            "justMyCode": true
+        },
+        {
+            "name": "Python Debugger: e2e Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests/",
+                "-v"
+            ],
+            "console": "integratedTerminal",
+            "python": "/Users/ryanwalker277/github/nex-backend/.venv/bin/python",
+            "justMyCode": true
+        },
+        {
+            "name": "Python Debugger: Uvicorn",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "app.main:app",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8000",
+                "--reload"
+            ],
+            "console": "integratedTerminal",
+            "python": "/Users/ryanwalker277/github/nex-backend/.venv/bin/python",
+            "justMyCode": true
+        }
+    ]
+}%

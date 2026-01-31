@@ -2,7 +2,7 @@ import os
 import firebase_admin
 from firebase_admin import credentials, firestore
 from loguru import logger
-import google.generativeai as genai
+
 
 class Services:
     def __init__(self):
@@ -42,13 +42,14 @@ class Services:
             logger.critical(f"Failed to initialize Firebase: {e}")
             raise e
 
-        # Initialize Gemini
-        google_api_key = os.getenv("GOOGLE_API_KEY")
-        if google_api_key:
-            genai.configure(api_key=google_api_key)
-            logger.info("Gemini AI configured.")
-        else:
-            logger.warning("GOOGLE_API_KEY not found. NEX interaction will fail.")
+        # Initialize Vertex AI
+        import vertexai
+        project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "neuralexchange-b6b7f")
+        try:
+            vertexai.init(project=project_id, location="us-central1")
+            logger.info(f"Vertex AI initialized for project {project_id}")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Vertex AI: {e}")
 
 services = Services()
 
