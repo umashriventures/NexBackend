@@ -7,6 +7,11 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/service_account.json
+      - GOOGLE_CLOUD_PROJECT=neuralexchange-b6b7f
+    volumes:
+      - ./service_account.json:/app/service_account.json
     depends_on:
       - neo4j
     networks:

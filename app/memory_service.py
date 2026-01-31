@@ -5,8 +5,9 @@ from firebase_admin import firestore
 from loguru import logger
 
 class MemoryService:
-    def __init__(self):
-        self.db = get_db()
+    @property
+    def db(self):
+        return get_db()
 
     def _get_memory_collection(self, uid: str):
         return self.db.collection("memories").document(uid).collection("items")

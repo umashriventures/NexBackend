@@ -16,6 +16,12 @@ async def interact(req: InteractionRequest, uid: str = Depends(get_current_user_
             tier=tier,
             upgrade_available=True
         )
+
+    if reply == "RATE_LIMITED":
+        raise HTTPException(
+            status_code=429,
+            detail="AI Service is currently overloaded. Please try again later."
+        )
     
     if reply == "ERROR":
         raise HTTPException(status_code=500, detail="AI Interaction Failed")
