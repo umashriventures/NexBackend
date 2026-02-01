@@ -24,6 +24,7 @@ class UserState(BaseModel):
 
 class InteractionRequest(BaseModel):
     input: str
+    conversation_history: Optional[List[dict]] = None
 
 class InteractionResponse(BaseModel):
     reply: str
@@ -60,3 +61,10 @@ class SubscriptionStatusResponse(BaseModel):
 class UpgradeSubscriptionRequest(BaseModel):
     new_tier: Tier
     subscription_expiry: Optional[str] = None
+
+class UpdateMemoryRequest(BaseModel):
+    content: str
+
+class DeleteMemoryResponse(BaseModel):
+    status: str
+    memory_remaining: int | float

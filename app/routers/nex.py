@@ -8,7 +8,7 @@ router = APIRouter(prefix="/nex", tags=["NEX"])
 
 @router.post("/interact")
 async def interact(req: InteractionRequest, uid: str = Depends(get_current_user_id)):
-    reply, tier = await nex_service.interact(uid, req.input)
+    reply, tier = await nex_service.interact(uid, req.input, req.conversation_history)
     
     if reply == "LIMIT_REACHED":
         return ErrorResponse(
