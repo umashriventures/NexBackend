@@ -68,3 +68,24 @@ class UpdateMemoryRequest(BaseModel):
 class DeleteMemoryResponse(BaseModel):
     status: str
     memory_remaining: int | float
+
+class CreateOrderRequest(BaseModel):
+    planId: Tier
+    currency: str = "INR"
+
+class CreateOrderResponse(BaseModel):
+    id: str
+    currency: str
+    amount: int
+    keyId: str
+
+class VerifyPaymentRequest(BaseModel):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+
+class VerifyPaymentResponse(BaseModel):
+    status: str
+    tier: Tier
+    updatedAt: datetime
+

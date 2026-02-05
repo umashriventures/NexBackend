@@ -2834,6 +2834,20 @@ files = [
 cffi = {version = "*", markers = "implementation_name == \"pypy\""}
 
 [[package]]
+name = "razorpay"
+version = "2.0.0"
+description = "Razorpay Python Client"
+optional = false
+python-versions = "*"
+files = [
+    {file = "razorpay-2.0.0-py3-none-any.whl", hash = "sha256:524cf1726f673fc72d448f83fd2ea479526d2dd48641ca75ee9a58e25300784a"},
+    {file = "razorpay-2.0.0.tar.gz", hash = "sha256:929aef2f4aec8190dfe12b79ba09e83c39086f6ea0bffa0586b719c5b9054450"},
+]
+
+[package.dependencies]
+requests = "*"
+
+[[package]]
 name = "requests"
 version = "2.32.5"
 description = "Python HTTP for Humans."
@@ -3318,4 +3332,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.15"
-content-hash = "fac0c7ba5e5931263b22a6f15e26011dde7a6e79419aa70413e9c2baa1b73a95"
+content-hash = "04283839881329c477baf858ecacb559a3e5a70da00603c874f7aac53c799a75"
