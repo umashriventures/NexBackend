@@ -33,7 +33,7 @@ async def end_session(session_id: str = Body(..., embed=True), uid: str = Depend
         
     return SessionEndResponse(**archive_data)
 
-@archive_router.get("/", response_model=List[Archive])
+@archive_router.get("", response_model=List[Archive])
 async def get_user_archives(uid: str = Depends(get_current_user_id)):
     return await archive_service.get_user_archives(uid)
 
