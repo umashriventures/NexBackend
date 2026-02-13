@@ -29,6 +29,7 @@ class InteractionRequest(BaseModel):
 
 class InteractionResponse(BaseModel):
     reply: str
+    vibe_check: Optional[str] = None
     messages_remaining: int | float
     tier: Tier
 

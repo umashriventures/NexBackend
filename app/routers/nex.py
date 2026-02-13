@@ -9,7 +9,7 @@ router = APIRouter(prefix="/nex", tags=["NEX"])
 @router.post("/interact", response_model=InteractionResponse | ErrorResponse)
 async def interact(req: InteractionRequest, uid: str = Depends(get_current_user_id)):
     # req.session_id is now required in InteractionRequest
-    reply, tier = await nex_service.interact(uid, req.session_id, req.input)
+    reply, vibe, tier = await nex_service.interact(uid, req.session_id, req.input)
     
     if reply == "SESSION_INVALID":
         raise HTTPException(status_code=400, detail="Invalid Session. Please start a new session.")
@@ -36,6 +36,7 @@ async def interact(req: InteractionRequest, uid: str = Depends(get_current_user_
 
     return InteractionResponse(
         reply=reply,
+        vibe_check=vibe,
         messages_remaining=remaining,
         tier=tier
     )
