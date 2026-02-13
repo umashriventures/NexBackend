@@ -2,6 +2,7 @@ from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
+import uuid
 
 class Tier(str, Enum):
     TIER_1 = "TIER_1"
@@ -24,17 +25,49 @@ class UserState(BaseModel):
 
 class InteractionRequest(BaseModel):
     input: str
-    conversation_history: Optional[List[dict]] = None
+    session_id: str = Field(..., description="Active session ID required")
 
 class InteractionResponse(BaseModel):
     reply: str
-    messages_remaining_today: int | float
+    messages_remaining: int | float
     tier: Tier
 
 class ErrorResponse(BaseModel):
     error: str
     tier: Tier
     upgrade_available: bool
+
+class Message(BaseModel):
+    role: str
+    content: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+class Session(BaseModel):
+    session_id: str
+    user_id: str
+    started_at: datetime
+    last_message_at: datetime
+    is_active: bool
+    message_count: int
+    transcript: List[Message] = []
+
+class Archive(BaseModel):
+    archive_id: str
+    user_id: str
+    title: str
+    reflection: str
+    emotion_tag: str
+    created_at: datetime
+
+class SessionStartResponse(BaseModel):
+    session_id: str
+    message: str
+
+class SessionEndResponse(BaseModel):
+    archive_id: str
+    title: str
+    reflection: str
+    emotion_tag: str
 
 class MemoryItem(BaseModel):
     id: str
@@ -88,4 +121,3 @@ class VerifyPaymentResponse(BaseModel):
     status: str
     tier: Tier
     updatedAt: datetime
-

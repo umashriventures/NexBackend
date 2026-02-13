@@ -2,14 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from ..auth_service import get_current_user_id
 from ..nex_service import nex_service
 from ..user_service import user_service
-from ..models import InteractionRequest, InteractionResponse, ErrorResponse, TIER_LIMITS
+from ..models import InteractionRequest, InteractionResponse, ErrorResponse, TIER_LIMITS, Tier
 
 router = APIRouter(prefix="/nex", tags=["NEX"])
 
-@router.post("/interact")
+@router.post("/interact", response_model=InteractionResponse | ErrorResponse)
 async def interact(req: InteractionRequest, uid: str = Depends(get_current_user_id)):
-    reply, tier = await nex_service.interact(uid, req.input, req.conversation_history)
+    # req.session_id is now required in InteractionRequest
+    reply, tier = await nex_service.interact(uid, req.session_id, req.input)
     
+    if reply == "SESSION_INVALID":
+        raise HTTPException(status_code=400, detail="Invalid Session. Please start a new session.")
+
     if reply == "LIMIT_REACHED":
         return ErrorResponse(
             error="MESSAGE_LIMIT_REACHED",
@@ -32,6 +36,6 @@ async def interact(req: InteractionRequest, uid: str = Depends(get_current_user_
 
     return InteractionResponse(
         reply=reply,
-        messages_remaining_today=remaining,
+        messages_remaining=remaining,
         tier=tier
     )

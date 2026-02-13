@@ -91,3 +91,24 @@ OUTPUT FORMAT:
 - The main reply must be natural language only.
 - Include a separate JSON field "memory" only if explicitly instructed above.
 - The reply should feel like it comes from a calm human presence, not a system."""
+
+def get_reflection_prompt(transcript_str: str) -> str:
+    return f"""Analyze the following conversation session and generate a "Reflection Card" content.
+
+TRANSCRIPT:
+{transcript_str}
+
+GOAL:
+Create a permanent, shareable reflection of this interaction.
+
+REQUIREMENTS:
+1. **Title**: A short, poetic or thematic title (max 5 words).
+2. **Reflection**: A 2-4 line quote that captures the emotional arc or key insight. 
+   - Avoid specific names or detailed events.
+   - Use "you" or general "we" phrasing.
+   - Sound human, wise, and empathetic. not generic AI advice.
+3. **Emotion Tag**: One word describing the dominant emotion (e.g., conflicted, hopeful, weary, determined).
+
+OUTPUT FORMAT:
+JSON with keys: "title", "reflection", "emotion_tag"."""
+

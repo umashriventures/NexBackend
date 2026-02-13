@@ -4,6 +4,7 @@ from vertexai.generative_models import GenerativeModel, GenerationConfig
 import random
 from .memory_service import memory_service
 from .user_service import user_service
+from .session_service import session_service
 from .models import Tier, TIER_LIMITS
 from loguru import logger
 import asyncio
@@ -21,30 +22,51 @@ class NexService:
     def __init__(self):
         self.model_name = "gemini-2.0-flash"
 
-    async def interact(self, uid: str, user_input: str, conversation_history: Optional[list[dict]] = None):
-        # ... (rest of method interact remains same until _generate_with_retry call) ...
-        # 1. Get user state
+    async def interact(self, uid: str, session_id: str, user_input: str):
+        """
+        Interacts with NEX within a specific sessionContext.
+        """
+        # 1. Get Session & Validate
+        session = await session_service.get_active_session(uid)
+        if not session or session.session_id != session_id:
+            # If session is invalid or mismatch, return error.
+            # Client should have started a session first.
+            return "SESSION_INVALID", Tier.TIER_1
+
+        # 2. Add User Message to Session
+        await session_service.add_message(session_id, "user", user_input)
+
+        # 3. Get user state & Check Global Limits
         user_state = await user_service.get_user_state(uid)
         
-        # 2. Check limits
+        # Check Turn Limits (using session message count / 2 for turns, or just message count)
+        # PRD: "Max 25 turns" -> 50 messages? 
+        # TIER_LIMITS currently has "messages": 20 for Tier 1.
+        # Let's trust TIER_LIMITS for daily message limits, but we also have per-session limits?
+        # PRD: "Free Tier: 1 session per day. Max 25 turns."
+        # If TIER_LIMITS["messages"] is daily limit, we should check that.
+        
         msg_limit = TIER_LIMITS[user_state.tier]["messages"]
         if user_state.messages_used_today >= msg_limit:
             return "LIMIT_REACHED", user_state.tier
 
-        # 3. Retrieve memories
+        # 4. Retrieve memories
         memories = await memory_service.get_all_memory_content(uid)
 
-        # 4. Check Memory Availability
+        # 5. Check Memory Availability
         mem_limit = TIER_LIMITS[user_state.tier]["memory"]
         can_add_memory = user_state.memory_used < mem_limit
         
-        # Format history
+        # 6. Format History from Session Transcript
         history_str = ""
-        if conversation_history:
-            for msg in conversation_history:
-                role = msg.get("role", "User").upper()
-                content = msg.get("content", "")
-                history_str += f"{role}: {content}\n"
+        for msg in session.transcript:
+             role = msg.role.upper()
+             content = msg.content
+             history_str += f"{role}: {content}\n"
+        # Add current input (already added to transcript in DB but maybe not in local object if we didn't refresh? 
+        # Actually add_message updates DB. The 'session' object is from get_active_session called BEFORE add_message.
+        # So we should append current input to history_str manually or re-fetch.
+        history_str += f"USER: {user_input}\n"
 
         # 5. Construct Prompt
         # Minimal tokens, clear instructions.
@@ -84,11 +106,14 @@ class NexService:
             if reply == "RATE_LIMITED":
                 return "RATE_LIMITED", user_state.tier
 
-            # 6. Store Memory if generated and allowed
+            # 7. Store Memory if generated and allowed
             if memory_content and can_add_memory:
                  await memory_service.add_memory(uid, memory_content)
 
-            # 7. Increment usage
+            # 8. Add Model Reply to Session
+            await session_service.add_message(session_id, "model", reply)
+
+            # 9. Increment global usage
             await user_service.increment_message_usage(uid)
             
             return reply, user_state.tier

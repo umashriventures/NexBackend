@@ -107,10 +107,6 @@ async def verify_payment(req: VerifyPaymentRequest, uid: str = Depends(get_curre
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch order details: {str(e)}")
 
-    # Update DB
-    await user_service.update_tier(uid, new_tier, expiry=None)
-        logger.exception(f"Failed to fetch order details/process update for user_id={uid}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch order details: {str(e)}")
 
     # Update DB
     try:

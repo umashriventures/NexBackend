@@ -21,9 +21,16 @@ class Services:
             # Check if already initialized
             if not firebase_admin._apps:
                 cred = None
-                service_account_path = "/app/service_account.json"
+                # Check multiple locations
+                possible_paths = ["service_account.json", "/app/service_account.json", "app/service_account.json"]
+                service_account_path = None
                 
-                if os.path.exists(service_account_path):
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        service_account_path = path
+                        break
+                
+                if service_account_path:
                     logger.info(f"Found service account at {service_account_path}")
                     cred = credentials.Certificate(service_account_path)
                     self.firebase_app = firebase_admin.initialize_app(cred)

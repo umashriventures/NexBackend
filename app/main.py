@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from .services import services
 
 # Import Routers
-from .routers import auth, nex, memory, subscription, payment
+from .routers import auth, nex, memory, subscription, payment, session
 
 # Initialize production-grade logging
 setup_logging()
@@ -53,6 +53,8 @@ app.include_router(nex.router)
 app.include_router(memory.router)
 app.include_router(subscription.router)
 app.include_router(payment.router)
+app.include_router(session.router)
+app.include_router(session.archive_router)
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
